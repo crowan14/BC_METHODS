@@ -4,7 +4,7 @@ There are a number of different techniques available to solve partial differenti
 
 $$ \mathcal{L}(u) =f \rightarrow \int \Big( \mathcal{L}(u) - f \Big)^2 d\Omega$$ 
 
-where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing the loss corresponds to solving the PDE at integration points. On the other hand, the Deep Ritz Method can only be used on PDE's with an associated variational ``energy," a functional whose minimum corresponds to a solution. When $\Pi$ is such an energy functional, we have that
+where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing the loss corresponds to solving the PDE at integration points. On the other hand, the Deep Ritz Method can only be used on PDE's with an associated variational "energy," a functional whose minimum corresponds to a solution. When $\Pi$ is such an energy functional, we have that
 
 $$ \delta \Pi = 0 \rightarrow \mathcal{L}(u) = f $$
 
@@ -64,7 +64,7 @@ $$ \theta, p = min_{\theta} max_{p} \Pi  $$
 
 ## Nitsche's Method
 
-Nitsche's method is a penalty method will an additional term added to the energy to preserve theoretical properties of the minimization problem. The solution is discretized such that the straight-sided boundary is enforced automatically. The discretization and loss function are
+Nitsche's method is a penalty method with an additional term added to the energy to preserve certain theoretical properties of the minimization problem. The solution is discretized such that the straight-sided boundary is enforced automatically. The discretization and loss function are
 
 $$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
 
@@ -80,9 +80,9 @@ $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\par
 
 ## Augmented Lagrangian
 
-The Augmented Lagrangian method is a kind of mid-point between Lagrange multiplier and penalty methods. The benefit of this method is that the penalty parameter may not need to be as large to accurately enforce the constraints. A sequence of problems are solved and the Lagrange multiplier and penalty parameter are updated at each step. The objective for the $k$-th problem is
+The Augmented Lagrangian method is a kind of mid-point between Lagrange multiplier and penalty methods. The benefit of this method is that the penalty parameter may not need to be as large to accurately enforce the constraint. A sequence of problems is solved and the Lagrange multiplier and penalty parameter are updated at each step. The objective for the $k$-th problem is
 
-$$ \Pi^k = \int \frac{1}{2} \frac{\partial u^k}{x_i} \frac{\partial u^k}{x_i} - f u^k d\Omega + \int \lambda^k u ds + \frac{1}{2}p^k \int u(s)^2 ds $$
+$$ \Pi^k = \int \frac{1}{2} \frac{\partial u^k}{\partial x_i} \frac{\partial u^k}{\partial x_i} - f u^k d\Omega + \int \lambda^k u ds + \frac{1}{2}p^k \int u(s)^2 ds $$
 
 The penalty $p^k$ is scheduled to increase by some predetermined factor from one step to the next. The Lagrange multiplier is updated with
 
@@ -90,8 +90,8 @@ $$ \lambda^{k+1}(s) = \lambda^k(s) + p^k u^k(s) $$
 
 ## Constrained Optimization
 
-A standard constrained optimization method can be used such as Sequential Quadratic Programming (SQP) to enforce the Dirichlet boundary conditions. These methods use Lagrange multiplier under the hood, approximating the objective as quadratic at each point in the optimization process. We simply need to pass the energy objective to an out-of-the-box SQP method with a constraint saying that the displacement along the curved boundary is zero.
+A standard constrained optimization method can be used such as Sequential Quadratic Programming (SQP) to enforce the Dirichlet boundary conditions. These methods use Lagrange multipliers under the hood, approximating the objective as quadratic at each point in the optimization process. We simply need to pass the energy objective to an out-of-the-box SQP method with a constraint saying that the displacement along the curved boundary is zero.
 
 ## Using the Code
 
-Separate neural networks are introduced for each of the different methods. The Lagrange multiplier approach is implemented in three different ways: Lagrange multipliers stored at each integration point, the Lagrange multiplier discretized as a linear combination of shape functions, and the Lagrange multiplier discretized as a neural network. The code is separated into blocks that can be run separately, after the neural networks are initialized, integration grids constructed, and some basic computations are performed (these can be run as blocks as well). Each method is split into its own block, and then a summary comparing all the methods is implemented at the end of the code.
+Separate neural networks are introduced for each of the different methods. The Lagrange multiplier approach is implemented in three different ways: Lagrange multipliers stored at each integration point, the Lagrange multiplier discretized as a linear combination of shape functions, and the Lagrange multiplier discretized as a neural network. The code is separated into blocks that can be run separately after the neural networks are initialized, integration grids constructed, and some basic computations are performed (these can be run as blocks as well). Each method is split into its own block, and then a summary comparing all the methods is implemented at the end of the code.

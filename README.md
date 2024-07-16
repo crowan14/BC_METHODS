@@ -60,12 +60,34 @@ $$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
 
 $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega + \int p(s) u(s)^2 ds $$
 
-$$ \theta, p = argmin_{\theta} argmax_{p} \Pi  $$
+$$ \theta, p = min_{\theta} max_{p} \Pi  $$
 
 ## Nitsche's Method
 
+Nitsche's method is a penalty method will an additional term added to the energy to preserve theoretical properties of the minimization problem. The solution is discretized such that the straight-sided boundary is enforced automatically. The discretization and loss function are
+
+$$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
+
+$$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega - \int \frac{\partial u}{\partial x_i} n_i u ds + p \int u(s)^2 ds $$
+
 ## Lagrange Multipliers
+
+Lagrange multipliers are a standard technique for enforcing constraints and are relatively underexplored in the PINN's literature. The loss function is modified with a new unknown Lagrange multiplier field $\lambda$ that is used to enforce the constraint. A saddle point of the modified loss function (minimum over displacement parameters, maximum over Lagrange multiplier) corresponds to a minimum of the energy objective subject to the constraint implied by the Dirichlet boundaries. This reads
+
+$$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
+
+$$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega + \int \lambda(s) u(s) ds  $$
 
 ## Augmented Lagrangian
 
+The Augmented Lagrangian method is a kind of mid-point between Lagrange multiplier and penalty methods. The benefit of this method is that the penalty parameter may not need to be as large to accurately enforce the constraints. A sequence of problems are solved and the Lagrange multiplier and penalty parameter are updated at each step. The objective for the $k$-th problem is
+
+$$ \Pi^k = \int \frac{1}{2} \frac{\partial u^k}{x_i} \frac{\partial u^k}{x_i} - f u^k d\Omega + \int \lambda^k u ds + \frac{1}{2}p^k \int u(s)^2 ds $$
+
+The penalty $p^k$ is scheduled to increase by some predetermined factor from one step to the next. The Lagrange multiplier is updated with
+
+$$ \lambda^{k+1}(s) = \lambda^k(s) + p^k u^k(s) $$
+
 ## Constrained Optimization
+
+A standard constrained optimization method can be used such as Sequential Quadratic Programming (SQP) to enforce the Dirichlet boundary conditions. These methods use Lagrange multiplier under the hood, approximating the objective as quadratic at each point in the optimization process. We simply need to pass the energy objective to an out-of-the-box SQP method with a constraint saying that the displacement along the curved boundary is zero.

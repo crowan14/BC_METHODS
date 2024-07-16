@@ -4,4 +4,12 @@ There are a number of different techniques available to solve partial differenti
 
 $$ \mathcal{L}(u) =f \rightarrow \int \Big( \mathcal{L}(u) - f \Big)^2 d\Omega$$ 
 
-\noindent where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing
+where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing the loss corresponds to accurately solving the PDE at integration points. On the other hand, the Deep Ritz Method can only be used on PDE's with an associated variational ``energy," a functional whose minimum corresponds to a solution. When $\Pi$ is such an energy functional, we have that
+
+$$ \Delta \Pi = 0 \rightarrow \mathcal{L}(u) = f $$
+
+In other words, the PDE is the condition for the minimum of the energy functional. Thus an approximate PDE solution can be found by discretizing the energy and minimizing it. In this report, we focus on the Deep Ritz Method. Once a form of the loss has been chosen, it is necessary to find a way to enforce boundary conditions. Neumann boundary conditions are enforced weakly with the energy functional, but it is necessary to choose among a variety of techniques to enforce Dirichlet boundary conditions. Enforcing Dirichlet boundary conditions is often the most difficult part of solving PDE's with neural networks. We compare the following techniques for Dirichlet boundary enforcement:
+
+\begin{itemize}
+  \item seg
+\end{itemize}

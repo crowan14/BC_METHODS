@@ -1,10 +1,10 @@
 # Boundary Condition Enforcement with the Deep Ritz Method
 
-There are a number of different techniques available to solve partial differential equations with solutions discretized by neural network. Two common methods are Physics-informed Networks (PINN's) and the Deep Ritz Method (DRM). These two methods construct different loss functions whose minimum corresponds to the PDE solution. The PDE and corresponding loss function for PINN's is
+There are a number of different techniques available to solve partial differential equations with solutions discretized by neural networks. Two common methods are Physics-informed Networks (PINN's) and the Deep Ritz Method (DRM). These two methods construct different loss functions whose minimum corresponds to the PDE solution. The PDE and corresponding loss function for PINN's is
 
 $$ \mathcal{L}(u) =f \rightarrow \int \Big( \mathcal{L}(u) - f \Big)^2 d\Omega$$ 
 
-where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing the loss corresponds to accurately solving the PDE at integration points. On the other hand, the Deep Ritz Method can only be used on PDE's with an associated variational ``energy," a functional whose minimum corresponds to a solution. When $\Pi$ is such an energy functional, we have that
+where $\mathcal{L}$ is a linear or nonlinear differential operator acting on the solution $u$ defined on the domain $\Omega$. Minimizing the loss corresponds to solving the PDE at integration points. On the other hand, the Deep Ritz Method can only be used on PDE's with an associated variational ``energy," a functional whose minimum corresponds to a solution. When $\Pi$ is such an energy functional, we have that
 
 $$ \delta \Pi = 0 \rightarrow \mathcal{L}(u) = f $$
 
@@ -24,7 +24,7 @@ $$ \frac{\partial^2 u}{\partial x_i \partial x_i}  + f = 0 $$
 
 $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega$$
 
-A zero temperature boundary condition will be applied to a semicircle centered at the origin with a radius of 1. The method of manufactured solutions can be used to have an analytical solution to compare against. The solution will be assumed to be 
+A zero temperature boundary condition will be applied to a semicircle centered at the origin with a radius of 1. The method of manufactured solutions can be used to obtain an analytical solution to compare approximate solutions against. The solution will be assumed to be 
 
 $$ u(x_1,x_2) = a x_2(1-x_1^2-x_2^2) $$
 
@@ -40,7 +40,7 @@ The solution is discretized with a neural network multiplied by a function which
 
 $$ u(x_1,x_2) = g(x_1,x_2) \mathcal{N}(x_1,x_2;\theta) $$
 
-where $g(x_1,x_2)$ enforces the boundary conditions and $\mathcal{N}$ is a neural network with parameters $\theta$. The Dirichlet boundary condition is enforced automatically with this method. The energy funnctional is not modified in any way because the boundary condition is built into the discretization. In the pytorch implementation, the zero temperature boundary condition along the straight side of the semi-circular domain will always be enforced in this way.
+where $g(x_1,x_2)$ enforces the boundary conditions and $\mathcal{N}$ is a neural network with parameters $\theta$. The Dirichlet boundary condition is enforced automatically with this method. The energy functional is not modified in any way because the boundary condition is built into the discretization. In the pytorch implementation, the zero temperature boundary condition along the straight side of the semi-circular domain will always be enforced in this way.
 
 ## Penalty Method
 
@@ -91,3 +91,7 @@ $$ \lambda^{k+1}(s) = \lambda^k(s) + p^k u^k(s) $$
 ## Constrained Optimization
 
 A standard constrained optimization method can be used such as Sequential Quadratic Programming (SQP) to enforce the Dirichlet boundary conditions. These methods use Lagrange multiplier under the hood, approximating the objective as quadratic at each point in the optimization process. We simply need to pass the energy objective to an out-of-the-box SQP method with a constraint saying that the displacement along the curved boundary is zero.
+
+## Using the Code
+
+Separate neural networks are introduced for each of the different methods. The Lagrange multiplier approach is implemented in three different ways: Lagrange multipliers stored at each integration point, the Lagrange multiplier discretized as a linear combination of shape functions, and the Lagrange multiplier discretized as a neural network. The code is separated into blocks that can be run separately, after the neural networks are initialized, integration grids constructed, and some basic computations are performed (these can be run as blocks as well). Each method is split into its own block, and then a summary comparing all the methods is implemented at the end of the code.

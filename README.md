@@ -82,7 +82,7 @@ $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\par
 
 The Augmented Lagrangian method is a kind of mid-point between Lagrange multiplier and penalty methods. The benefit of this method is that the penalty parameter may not need to be as large to accurately enforce the constraints. A sequence of problems are solved and the Lagrange multiplier and penalty parameter are updated at each step. The objective for the $k$-th problem is
 
-$$ \Pi^k = \int \frac{1}{2} \frac{\partial u^k}{x_i} \frac{\partial u^k}{x_i} - f u^k d\Omega + \int \lambda^k u ds + \frac{1}{2}p^k \int u(s)^2 ds $$
+$$ \Pi^k = \int \frac{1}{2} \frac{\partial u^k}{\partial x_i} \frac{\partial u^k}{\partial x_i} - f u^k d\Omega + \int \lambda^k u ds + \frac{1}{2}p^k \int u(s)^2 ds $$
 
 The penalty $p^k$ is scheduled to increase by some predetermined factor from one step to the next. The Lagrange multiplier is updated with
 

@@ -30,7 +30,7 @@ $$ u(x_1,x_2) = a x_2(1-x_1^2-x_2^2) $$
 
 which can be plugged into the governing PDE to compute the source term as
 
-$$ f(x_1,x_2) = $$ 8ax_1 $$
+$$ f(x_1,x_2) = 8ax_1 $$
 
 Note that the manufactured solution is zero along the semicircular boundary. This source term can be used in the approximate methods and we can compare the accuracy of the computed solution to the exact one. 
 
@@ -38,7 +38,7 @@ Note that the manufactured solution is zero along the semicircular boundary. Thi
 
 The solution is discretized with a neural network multiplied by a function which is zero along the boundary and non-zero inside the domain. This can be written as
 
-$$ u(x_1,x_2) = g(x_1,x_2) \mathcal{x_1,x_2;\theta} $$
+$$ u(x_1,x_2) = g(x_1,x_2) \mathcal{N}(x_1,x_2;\theta) $$
 
 where $g(x_1,x_2)$ enforces the boundary conditions and $\mathcal{N}$ is a neural network with parameters $\theta$. The Dirichlet boundary condition is enforced automatically with this method. The energy funnctional is not modified in any way because the boundary condition is built into the discretization. In the pytorch implementation, the zero temperature boundary condition along the straight side of the semi-circular domain will always be enforced in this way.
 

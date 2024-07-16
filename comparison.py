@@ -3,6 +3,7 @@ import numpy as np
 from torch import nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from typing import Callable, Iterator, Union
 import scipy.optimize
 from scipy.optimize import OptimizeResult
@@ -700,25 +701,17 @@ exact_interior = u(x_grid).unsqueeze(1)
 
 #plot exact solution
 sol = u(plot_grid)
-Zex = np.reshape( sol , (pts,pts) )
+Zex = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZex = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZex = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZex[i,j] = Zex[i,j]
         else:
             maskedZex[i,j] = np.nan
             
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZex )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Exact Solution')
-# #ax.set_zlim(0,np.max(maskedZA))
-# plt.show()
 
 #compute energy of exact solution with energy density
 def pi(x):
@@ -726,6 +719,10 @@ def pi(x):
     return val
 
 energy = float( torch.sum( dx1**2 * pi(x_grid) ) )
+
+#number of parameters in solution neural network
+model = SolutionA(n)
+num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 #%%
 
@@ -1144,11 +1141,11 @@ for i in range(epochsA):
         print(f'Epoch {i}, Loss {lossesA[i]}')
     
 #error
-int_errorA = torch.sum( (exact_interior - uA.forward(x_grid))**2 ) / len(x_grid)
+mseA = torch.sum( (exact_interior - uA.forward(x_grid))**2 ) / len(x_grid)
 b_errorA = torch.sum( uA.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorA.detach().numpy()
-b_errorA.detach().numpy()
+mseA = mseA.detach().numpy()
+b_errorA = b_errorA.detach().numpy()
         
 #converged solution
 sol = uA.forward(plot_grid).detach().numpy()
@@ -1162,30 +1159,35 @@ for i in range(scale*pts):
             maskedZA[i,j] = ZA[i,j]
         else:
             maskedZA[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZA )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution A, MSE: ' + str(round(float(int_errorA),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorA = ( maskedZA-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uA.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorA , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uA.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
-
-
-
-plt.figure()
-plt.contourf( X1 , X2 , maskedZA , 30 )
-plt.plot(xx,semicircle(xx),linewidth=3.5,color='k')
-plt.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k')            
 
 #%%
             
@@ -1201,7 +1203,7 @@ penB = 5E3
 
 #training parameters
 epochsB = 40000
-lrB = 1e-4
+lrB = 1e-3
 lossesB = np.zeros(epochsB)
 
 #ADAM optimization
@@ -1226,39 +1228,51 @@ for i in range(epochsB):
         print(f'Epoch {i}, Loss {lossesB[i]}')   
        
 #error
-int_errorB = torch.sum( (exact_interior - uB.forward(x_grid))**2 ) / len(x_grid)
+mseB = torch.sum( (exact_interior - uB.forward(x_grid))**2 ) / len(x_grid)
 b_errorB = torch.sum( uB.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorB.detach().numpy()
-b_errorB.detach().numpy()
-
+mseB = mseB.detach().numpy()
+b_errorB = b_errorB.detach().numpy()
+        
 #converged solution
 sol = uB.forward(plot_grid).detach().numpy()
-ZB = np.reshape( sol , (pts,pts) )
+ZB = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZB = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZB = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZB[i,j] = ZB[i,j]
         else:
             maskedZB[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZB )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution B, MSE: ' + str(round(float(int_errorB),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorB = ( maskedZB-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uB.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorB , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uB.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
             
@@ -1303,39 +1317,51 @@ for i in range(epochsC):
         print(f'Epoch {i}, Loss {lossesC[i]}')
          
 #error
-int_errorC = torch.sum( (exact_interior - uC.forward(x_grid))**2 ) / len(x_grid)
+mseC = torch.sum( (exact_interior - uC.forward(x_grid))**2 ) / len(x_grid)
 b_errorC = torch.sum( uC.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorC.detach().numpy()
-b_errorC.detach().numpy()
-
+mseC = mseC.detach().numpy()
+b_errorC = b_errorC.detach().numpy()
+        
 #converged solution
 sol = uC.forward(plot_grid).detach().numpy()
-ZC = np.reshape( sol , (pts,pts) )
+ZC = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZC = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZC = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZC[i,j] = ZC[i,j]
         else:
             maskedZC[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZC )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution C, MSE: ' + str(round(float(int_errorC),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorC = ( maskedZC-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uC.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorC , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uC.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
             
@@ -1380,39 +1406,51 @@ for i in range(epochsD):
         print(f'Epoch {i}, Loss {lossesD[i]}')
         
 #error
-int_errorD = torch.sum( (exact_interior - uD.forward(x_grid))**2 ) / len(x_grid)
+mseD = torch.sum( (exact_interior - uD.forward(x_grid))**2 ) / len(x_grid)
 b_errorD = torch.sum( uD.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorD.detach().numpy()
-b_errorD.detach().numpy()
-
+mseD = mseD.detach().numpy()
+b_errorD = b_errorD.detach().numpy()
+        
 #converged solution
 sol = uD.forward(plot_grid).detach().numpy()
-ZD = np.reshape( sol , (pts,pts) )
+ZD = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZD = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZD = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZD[i,j] = ZD[i,j]
         else:
             maskedZD[i,j] = np.nan
- 
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZD )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution D, MSE: ' + str(round(float(int_errorD),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorD = ( maskedZD-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uD.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorD , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uD.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
             
@@ -1464,39 +1502,51 @@ for i in range(epochsE):
         print(f'Epoch {i}, Loss {lossesE[i]}')
     
 #error
-int_errorE = torch.sum( (exact_interior - uE.forward(x_grid))**2 ) / len(x_grid)
+mseE = torch.sum( (exact_interior - uE.forward(x_grid))**2 ) / len(x_grid)
 b_errorE = torch.sum( uE.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorE.detach().numpy()
-b_errorE.detach().numpy()
-
+mseE = mseE.detach().numpy()
+b_errorE = b_errorE.detach().numpy()
+        
 #converged solution
 sol = uE.forward(plot_grid).detach().numpy()
-ZE = np.reshape( sol , (pts,pts) )
+ZE = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZE = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZE = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZE[i,j] = ZE[i,j]
         else:
             maskedZE[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZE )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution E, MSE: ' + str(round(float(int_errorE),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorE = ( maskedZE-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uE.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorE , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uE.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
 
@@ -1544,39 +1594,51 @@ for i in range(epochsF):
         print(f'Epoch {i}, Loss {lossesF[i]}')   
        
 #error
-int_errorF = torch.sum( (exact_interior - uF.forward(x_grid))**2 ) / len(x_grid)
+mseF = torch.sum( (exact_interior - uF.forward(x_grid))**2 ) / len(x_grid)
 b_errorF = torch.sum( uF.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorF.detach().numpy()
-b_errorF.detach().numpy()
-
+mseF = mseF.detach().numpy()
+b_errorF = b_errorF.detach().numpy()
+        
 #converged solution
 sol = uF.forward(plot_grid).detach().numpy()
-ZF = np.reshape( sol , (pts,pts) )
+ZF = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZF = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZF = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZF[i,j] = ZF[i,j]
         else:
             maskedZF[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZF )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution F, MSE: ' + str(round(float(int_errorF),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorF = ( maskedZF-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uF.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorF , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uF.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
 
@@ -1634,39 +1696,51 @@ while conG > tolG:
     penG = 2*penG
          
 #error
-int_errorG = torch.sum( (exact_interior - uG.forward(x_grid))**2 ) / len(x_grid)
+mseG = torch.sum( (exact_interior - uG.forward(x_grid))**2 ) / len(x_grid)
 b_errorG = torch.sum( uG.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorG.detach().numpy()
-b_errorG.detach().numpy()
-
+mseG = mseG.detach().numpy()
+b_errorG = b_errorG.detach().numpy()
+        
 #converged solution
 sol = uG.forward(plot_grid).detach().numpy()
-ZG = np.reshape( sol , (pts,pts) )
+ZG = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZG = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZG = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZG[i,j] = ZG[i,j]
         else:
             maskedZG[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZG )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution G MSE: ' + str(round(float(int_errorG),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorG = ( maskedZG-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uG.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorG , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uG.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
 
@@ -1688,19 +1762,6 @@ lossesH = np.zeros(epochsH)
 #ADAM optimization
 optimizer_sol = torch.optim.Adam( uH.parameters() , lr=lrH )
 optimizer_lam = torch.optim.Adam( lamH.parameters() , lr=1*lrH , maximize=True )
-
-# #check implementation of lagrange multiplier network
-# data = torch.sin( 1.5*np.pi*x1_grid)
-# for i in range(10000):
-#     optimizer_lam.zero_grad()
-#     loss = -torch.sum( ( data - lamH.forward(x1_grid) )**2 )
-#     loss.backward()
-#     optimizer_lam.step()
-#     print(loss.item())
-    
-# plt.figure()
-# plt.plot( x1_grid , lamH.forward(x1_grid).detach().numpy() )
-# plt.plot( x1_grid , data )
 
 print('begin training H...')
 
@@ -1727,43 +1788,53 @@ for i in range(epochsH):
         # print(torch.sum(lamH.forward(x1_grid)))
          
 #error
-int_errorH = torch.sum( (exact_interior - uH.forward(x_grid))**2 ) / len(x_grid)
+mseH = torch.sum( (exact_interior - uH.forward(x_grid))**2 ) / len(x_grid)
 b_errorH = torch.sum( uH.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorH.detach().numpy()
-b_errorH.detach().numpy()
-
+mseH = mseH.detach().numpy()
+b_errorH = b_errorH.detach().numpy()
+        
 #converged solution
 sol = uH.forward(plot_grid).detach().numpy()
-ZH = np.reshape( sol , (pts,pts) )
+ZH = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZH = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZH = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZH[i,j] = ZH[i,j]
         else:
             maskedZH[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZH )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution H MSE: ' + str(round(float(int_errorH),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorH = ( maskedZH-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uH.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorH , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uH.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
-
-#plt.plot( lamH.forward(x1_grid).detach().numpy() )
 
 #%%
 
@@ -1785,7 +1856,7 @@ def con():
 #parameters for SQP optimization
 scipy_minimizer_args = {
     'maxiter': 50000,
-    'xtol': 1e-8,
+    'xtol': 1e-15,
     # 'initial_tr_radius': 0.1,
     # 'initial_constr_penalty': 0.01,
     # 'initial_barrier_parameter': 100.0,
@@ -1795,45 +1866,57 @@ scipy_minimizer_args = {
 slsqp_optim = TorchScipyOptimizer( uI.parameters() , scipy_minimizer_args )
 
 #constraint violation tolerance
-eps = 0.001 
+eps = 0.001
 
 #run optimization
 z = slsqp_optim.step( obj , con, lower_bnd=-eps , upper_bnd=eps )
 
 #error
-int_errorI = torch.sum( (exact_interior - uI.forward(x_grid))**2 ) / len(x_grid)
+mseI = torch.sum( (exact_interior - uI.forward(x_grid))**2 ) / len(x_grid)
 b_errorI = torch.sum( uI.forward( bc_grid )**2 ) / len(bc_grid)
 
-int_errorI.detach().numpy()
-b_errorI.detach().numpy()
-
+mseI = mseI.detach().numpy()
+b_errorI = b_errorI.detach().numpy()
+        
 #converged solution
 sol = uI.forward(plot_grid).detach().numpy()
-ZI = np.reshape( sol , (pts,pts) )
+ZI = np.reshape( sol , (scale*pts,scale*pts) )
 
 #for plotting only over semicircle
-maskedZI = np.zeros((pts,pts))
-for i in range(pts):
-    for j in range(pts):
+maskedZI = np.zeros((scale*pts,scale*pts))
+for i in range(scale*pts):
+    for j in range(scale*pts):
         if X2[i,j] <= semicircle(X1[i,j]):
             maskedZI[i,j] = ZI[i,j]
         else:
             maskedZI[i,j] = np.nan
-            
-#visualize solution
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_subplot( 2 , 1 , 1 , projection ='3d')
-ax.plot_surface( X1 , X2 , maskedZI )
-ax.set_xlabel('X1')
-ax.set_ylabel('X2')
-ax.set_title('Solution I MSE: ' + str(round(float(int_errorI),4)) )
-#ax.set_zlim(0,np.max(maskedZA))
+    
+#l2 error over domain
+l2_errorI = ( maskedZI-maskedZex )**2
 
-ax = fig.add_subplot( 2 , 1 , 2 )
-ax.plot( x1_grid.numpy() , uI.forward(bc_grid).detach().numpy() )
-ax.set_xlabel('s')
-ax.set_ylabel('u(s)')
-ax.set_title('Temperature along Boundary')
+#plot error in interior and along boundary
+fig , axs = plt.subplots( 2 , 1 )
+
+ax1 = axs[0]
+ax2 = axs[1]
+
+cont = ax1.contourf( X1 , X2 , l2_errorI , 30 )
+ax1.plot(xx,semicircle(xx),linewidth=3.5,color='k')
+ax1.plot(xx,np.zeros(xx.shape),linewidth=3.5,color='k') 
+ax1.axis('off') 
+ax1.set_xlim(-1.05,1.05)
+ax1.set_ylim(0,1.05)
+ax1.set_title('L2 Error')
+cbar = fig.colorbar( cont , ax=ax1 )
+tick_locator = ticker.MaxNLocator(nbins=3)
+cbar.locator = tick_locator
+cbar.update_ticks()
+
+ax2.plot( x1_grid.numpy() , uI.forward(bc_grid).detach().numpy() )
+ax2.set_xlabel('s')
+ax2.set_ylabel('u(s)')
+ax2.set_title('Temperature Along Boundary')
+ax2.set_xticks([])
 
 plt.show()
 
@@ -1846,17 +1929,28 @@ plt.show()
 
 plt.close('all')
 
+#ignore early loss values that are large
+thresh = 2
+lossesA = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesA ] )
+lossesB = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesB ] )
+lossesC = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesC ] )
+lossesD = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesD ] )
+lossesE = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesE ] )
+lossesF = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesF ] )
+lossesG = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesG ] )
+lossesH = np.asarray( [ np.nan if elem > thresh else elem for elem in lossesH ] )
+
 #training
+horizon = 30000
 plt.figure()
-plt.plot( lossesA , color='r' , label='A' )
-plt.plot( lossesB , color='b' , label='B' )
-plt.plot( lossesC , color='k' , label='C' )
-plt.plot( lossesD , color='m' , label='D' )
-plt.plot( lossesE , color='c' , label='E' )
-plt.plot( lossesF , color='g' , label='F' )
-plt.plot( lossesG , color='g' , label='G' )
-plt.plot( lossesH , color='g' , label='H' )
-plt.plot( energy*np.ones(lossesA.shape) , label='Exact energy' )
+plt.plot( lossesA[:horizon] , color='r' , label='Hard Enforcement' )
+plt.plot( lossesB[:horizon] , color='b' , label='Penalty' )
+plt.plot( lossesC[:horizon] , color='k' , label='SA PINN' )
+plt.plot( lossesD[:horizon] , color='m' , label='Discrete Lagrange' )
+plt.plot( lossesE[:horizon] , color='c' , label='Shape Function Lagrange' )
+plt.plot( lossesF[:horizon] , color='g' , label='Nitsche Method' )
+plt.plot( lossesG[:horizon] , color='y' , label='Augmented Lagrangian' )
+plt.plot( energy*np.ones(horizon) , '--' , label='Exact energy' )
 plt.legend()
 plt.xlabel('Epoch')
 plt.ylabel('Energy')
@@ -1864,81 +1958,35 @@ plt.title('Training Convergence')
 plt.show()
 
 
+sz = 150
+
 plt.figure()
-plt.scatter( epochsA , int_errorA.detach().numpy() , label='Hard enforcement' )
-plt.scatter( epochsB , int_errorB.detach().numpy() , label='Penalty' )
-plt.scatter( epochsC , int_errorC.detach().numpy() , label='SA PINN' )
-plt.scatter( epochsD , int_errorD.detach().numpy() , label='Discrete Lagrange' )
-plt.scatter( epochsE , int_errorE.detach().numpy() , label='Shape Function Lagrange' )
-plt.scatter( epochsF , int_errorF.detach().numpy() , label='Nitsche Method' )
-plt.scatter( len(lossesG) , int_errorG.detach().numpy() , label='Augmented Lagrangian' )
+plt.scatter( epochsA , mseA , s=sz , label='Hard enforcement' )
+plt.scatter( epochsB , mseB , s=sz , label='Penalty' )
+plt.scatter( epochsC , mseC , s=sz , label='SA PINN' )
+plt.scatter( epochsD , mseD , s=sz , label='Discrete Lagrange' )
+plt.scatter( epochsE , mseE , s=sz , label='Shape Function Lagrange' )
+plt.scatter( epochsF , mseF , s=sz , label='Nitsche Method' )
+plt.scatter( len(lossesG) , mseG ,  s=sz , label='Augmented Lagrangian' )
 plt.legend()
 plt.xlabel('Number of epochs')
-plt.ylabel('Solution Error')
+plt.ylabel('MSE')
 plt.title('Comparison of Solution Errors')
 plt.show()
 
 plt.figure()
-plt.scatter( epochsA , b_errorA.detach().numpy() , label='Hard enforcement' )
-plt.scatter( epochsB , b_errorB.detach().numpy() , label='Penalty' )
-plt.scatter( epochsC , b_errorC.detach().numpy() , label='SA PINN' )
-plt.scatter( epochsD , b_errorD.detach().numpy() , label='Discrete Lagrange' )
-plt.scatter( epochsE , b_errorE.detach().numpy() , label='Shape Function Lagrange' )
-plt.scatter( epochsF , b_errorF.detach().numpy() , label='Nitsche Method' )
-plt.scatter( len(lossesG) , b_errorG.detach().numpy() , label='Augmented Lagrangian' )
+plt.scatter( epochsA , b_errorA , s=sz , label='Hard enforcement' )
+plt.scatter( epochsB , b_errorB , s=sz , label='Penalty' )
+plt.scatter( epochsC , b_errorC , s=sz , label='SA PINN' )
+plt.scatter( epochsD , b_errorD , s=sz , label='Discrete Lagrange' )
+plt.scatter( epochsE , b_errorE , s=sz , label='Shape Function Lagrange' )
+plt.scatter( epochsF , b_errorF , s=sz , label='Nitsche Method' )
+plt.scatter( len(lossesG) , b_errorG , s=sz , label='Augmented Lagrangian' )
 plt.legend()
 plt.xlabel('Number of epochs')
-plt.ylabel('Boundary Error')
-plt.title('Comparison of BC Errors')
+plt.ylabel('Dirichlet Boundary MSE')
+plt.title('Comparison of Boundary Condition Errors')
 plt.show()
-
-# #visualize solution
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZA )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Solution A')
-# #ax.set_zlim(0,np.max(maskedZA))
-# plt.show()
-
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZB )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Solution B')
-# #ax.set_zlim(0,np.max(maskedZB))
-# plt.show()
-
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZC )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Solution C')
-# #ax.set_zlim(0,np.max(maskedZB))
-# plt.show()
-
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZD )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Solution D')
-# #ax.set_zlim(0,np.max(maskedZB))
-# plt.show()
-
-# fig = plt.figure()
-# ax = plt.axes(projection ='3d')
-# ax.plot_surface( X1 , X2 , maskedZE )
-# ax.set_xlabel('X1')
-# ax.set_ylabel('X2')
-# ax.set_title('Solution E')
-# #ax.set_zlim(0,np.max(maskedZB))
-# plt.show()
-
-#sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 #%%
 

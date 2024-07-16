@@ -13,15 +13,24 @@ In other words, the PDE is the condition for the minimum of the energy functiona
 1. Hard boundary enforcement
 2. Penalty method
 3. Self-Adaptive PINN's
-4. Variants of Lagrange Multipliers
-5. Augmented Lagrangian Method
-6. Constrained Optimization
+4. Nitsche's Method
+5. Lagrange Multipliers
+6. Augmented Lagrangian Method
+7. Constrained Optimization
+
+These methods are briefly outlined below. The example problem will be 2D heat conduction on a semi-circular domain. The governing equation and energy functional are
+
+$$ \frac{\partial^2 u}{\partial x_i \partial x_i}  + f $$
+
+$$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega$$
 
 ## Hard Boundary Enforcement
 
 ## Penalty Method
 
 ## Self-Adaptive PINN's
+
+## Nitsche's Method
 
 ## Lagrange Multipliers
 

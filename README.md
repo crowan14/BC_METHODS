@@ -44,7 +44,7 @@ where $g(x_1,x_2)$ enforces the boundary conditions and $\mathcal{N}$ is a neura
 
 ## Penalty Method
 
-The solution is discretized such that only the straight-sided boundary is enforced, and the energy functional is modified to add a penalty for violations of the boundary condition along the curved side of the semicircle. This reads
+The solution is discretized such that only the straight-sided boundary is enforced automatically, and the energy functional is modified to add a penalty for violations of the boundary condition along the curved side of the semicircle. This reads
 
 $$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
 
@@ -53,6 +53,14 @@ $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\par
 where $p>0$ is a penalty parameter and $s$ is a parameterization of the curved side of the domain.
 
 ## Self-Adaptive PINN's
+
+The solution is discretized such that only the straight-sided boundary is enforced automatically, and the energy functional is modified to add a penalty for violations of the boundary condition along the curved side of the semicircle. Unlike the standard penalty formulation, there is a learnable penalty parameter associated with each integration point along the curved boundary. The loss is minimized over the parameters of the solution and maximized over the penalty parameters. The problem can be written as
+
+$$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
+
+$$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega + \int p(s) u(s)^2 ds $$
+
+$$ \theta^*, p^* = \underset{\theta}{max} \underset{}{min}
 
 ## Nitsche's Method
 

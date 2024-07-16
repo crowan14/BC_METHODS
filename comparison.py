@@ -7,6 +7,7 @@ from matplotlib import ticker
 from typing import Callable, Iterator, Union
 import scipy.optimize
 from scipy.optimize import OptimizeResult
+import time
 
 # %matplotlib qt
 
@@ -1033,6 +1034,7 @@ class ConstrainedOptimizerTracker():
         self.current_iter = 0
         self.current_obj = None
         self.current_con = None
+        self.count = 1
 
     def constraint_violation(self, con):
         # account for lb and ub, find total constraint violation lb <= con <= ub
@@ -1050,8 +1052,9 @@ class ConstrainedOptimizerTracker():
         self.con_history[self.current_iter, :] = self.current_con.detach().flatten()
         self.current_iter += 1
         con_norm = torch.sum(self.constraint_violation(self.current_con))
-        print(f'Iteration {self.current_iter}, Objective: {self.current_obj.item()}, Constraint Violation: {con_norm}')
-
+        #print(f'Iteration {self.current_iter}, Objective: {self.current_obj.item()}, Constraint Violation: {con_norm}')
+        self.count += 1
+        
     def obj_fn(self):
         self.current_obj = self.obj()
         return self.current_obj
@@ -1116,13 +1119,14 @@ class ConstrainedOptimizerTracker():
 uA = SolutionA(n)
 
 #training parameters
-epochsA = 3000
+epochsA = 5000
 lrA = 1e-3
 lossesA = np.zeros(epochsA)
 
 #ADAM optimization
 optimizer_sol = torch.optim.Adam( uA.parameters() , lr=lrA )
 
+t0 = time.time()
 print('begin training A...')
 for i in range(epochsA):
     
@@ -1140,6 +1144,11 @@ for i in range(epochsA):
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesA[i]}')
     
+t1 = time.time()
+
+#run time
+tA = t1-t0
+
 #error
 mseA = torch.sum( (exact_interior - uA.forward(x_grid))**2 ) / len(x_grid)
 b_errorA = torch.sum( uA.forward( bc_grid )**2 ) / len(bc_grid)
@@ -1209,6 +1218,7 @@ lossesB = np.zeros(epochsB)
 #ADAM optimization
 optimizer_sol = torch.optim.Adam( uB.parameters() , lr=lrB )
 
+t0 = time.time()
 print('begin training B...')
 for i in range(epochsB):
     
@@ -1226,7 +1236,12 @@ for i in range(epochsB):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesB[i]}')   
-       
+  
+t1 = time.time()
+
+#run time
+tB = t1-t0
+
 #error
 mseB = torch.sum( (exact_interior - uB.forward(x_grid))**2 ) / len(x_grid)
 b_errorB = torch.sum( uB.forward( bc_grid )**2 ) / len(bc_grid)
@@ -1295,6 +1310,7 @@ lossesC = np.zeros(epochsC)
 optimizer_sol = torch.optim.Adam( uC.parameters() , lr=lrC )
 optimizer_pen = torch.optim.Adam( penC.parameters() , lr=100*lrC , maximize=True )
 
+t0 = time.time()
 print('begin training C...')
 for i in range(epochsC):
     
@@ -1315,7 +1331,12 @@ for i in range(epochsC):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesC[i]}')
-         
+ 
+t1 = time.time()
+
+#run time
+tC = t1-t0   
+     
 #error
 mseC = torch.sum( (exact_interior - uC.forward(x_grid))**2 ) / len(x_grid)
 b_errorC = torch.sum( uC.forward( bc_grid )**2 ) / len(bc_grid)
@@ -1384,6 +1405,7 @@ lossesD = np.zeros(epochsD)
 optimizer_sol = torch.optim.Adam( uD.parameters() , lr=lrD )
 optimizer_lam = torch.optim.Adam( lamD.parameters() , lr=10*lrD , maximize=True )
 
+t0 = time.time()
 print('begin training D...')
 for i in range(epochsD):
     
@@ -1404,6 +1426,11 @@ for i in range(epochsD):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesD[i]}')
+        
+t1 = time.time()
+
+#run time
+tD = t1-t0
         
 #error
 mseD = torch.sum( (exact_interior - uD.forward(x_grid))**2 ) / len(x_grid)
@@ -1480,6 +1507,7 @@ shapes = torch.zeros((pts-1,N))
 for i in range(N):
     shapes[:,i] = ( torch.cos( i*np.pi*x1_grid ) / (i+1) ).squeeze()
 
+t0 = time.time()
 print('begin training E...')
 for i in range(epochsE):
     
@@ -1500,6 +1528,11 @@ for i in range(epochsE):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesE[i]}')
+        
+t1 = time.time()
+
+#run time
+tE = t1-t0
     
 #error
 mseE = torch.sum( (exact_interior - uE.forward(x_grid))**2 ) / len(x_grid)
@@ -1570,6 +1603,7 @@ lossesF = np.zeros(epochsF)
 #ADAM optimization
 optimizer_sol = torch.optim.Adam( uF.parameters() , lr=lrF )
 
+t0 = time.time()
 print('begin training F...')
 for i in range(epochsF):
     
@@ -1592,6 +1626,11 @@ for i in range(epochsF):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesF[i]}')   
+        
+t1 = time.time()
+
+#run time
+tF = t1-t0
        
 #error
 mseF = torch.sum( (exact_interior - uF.forward(x_grid))**2 ) / len(x_grid)
@@ -1667,6 +1706,7 @@ optimizer_sol = torch.optim.Adam( uG.parameters() , lr=lrG )
 
 count = 0
 
+t0 = time.time()
 print('begin training G...')
 while conG > tolG:
     
@@ -1694,7 +1734,12 @@ while conG > tolG:
     conG = float( torch.sum( uG.forward( bc_grid )**2 ) / len(bc_grid) )
     lamG = lamG + penG * uG.forward(bc_grid).detach()    
     penG = 2*penG
-         
+    
+t1 = time.time()
+
+#run time
+tG = t1-t0
+  
 #error
 mseG = torch.sum( (exact_interior - uG.forward(x_grid))**2 ) / len(x_grid)
 b_errorG = torch.sum( uG.forward( bc_grid )**2 ) / len(bc_grid)
@@ -1763,9 +1808,8 @@ lossesH = np.zeros(epochsH)
 optimizer_sol = torch.optim.Adam( uH.parameters() , lr=lrH )
 optimizer_lam = torch.optim.Adam( lamH.parameters() , lr=1*lrH , maximize=True )
 
+t0 = time.time()
 print('begin training H...')
-
-    
 for i in range(epochsH):
     
     optimizer_sol.zero_grad()
@@ -1785,8 +1829,12 @@ for i in range(epochsH):
     
     if i % 1000 == 0:
         print(f'Epoch {i}, Loss {lossesH[i]}')  
-        # print(torch.sum(lamH.forward(x1_grid)))
-         
+
+t1 = time.time()
+
+#run time
+tH = t1-t0
+    
 #error
 mseH = torch.sum( (exact_interior - uH.forward(x_grid))**2 ) / len(x_grid)
 b_errorH = torch.sum( uH.forward( bc_grid )**2 ) / len(bc_grid)
@@ -1847,7 +1895,7 @@ uI = SolutionI(n)
 
 #energy objective
 def obj():
-    return torch.mean( dx1**2 * uI.energy_density(x_grid) )
+    return torch.sum( dx1**2 * uI.energy_density(x_grid) )
 
 #zero temperature boundary (constraint)
 def con():
@@ -1862,14 +1910,33 @@ scipy_minimizer_args = {
     # 'initial_barrier_parameter': 100.0,
 }
 
-#initialize optimizer
-slsqp_optim = TorchScipyOptimizer( uI.parameters() , scipy_minimizer_args )
-
 #constraint violation tolerance
 eps = 0.001
 
-#run optimization
-z = slsqp_optim.step( obj , con, lower_bnd=-eps , upper_bnd=eps )
+#create a tracker for optimization
+tracker = ConstrainedOptimizerTracker( scipy_minimizer_args['maxiter'] , pts-1 , obj , con , lb=-eps , ub=eps )
+
+#pass in the tracker's callback as the 3rd argument
+optimizer = TorchScipyOptimizer( uI.parameters(), scipy_minimizer_args, tracker.callback)
+
+
+#run the optimization
+t0 = time.time()
+optimizer.step( tracker.obj_fn , tracker.con_fn , lower_bnd=-eps , upper_bnd=eps )
+t1 = time.time()
+
+#run time
+tI = t1-t0
+
+#extract number of steps and convergence history
+epochsI = tracker.count
+lossesI = tracker.obj_history[:epochsI-1]
+
+# #initialize optimizer
+# slsqp_optim = TorchScipyOptimizer( uI.parameters() , scipy_minimizer_args )
+
+# #run optimization, this variable stores summary data
+# z = slsqp_optim.step( obj , con, lower_bnd=-eps , upper_bnd=eps )
 
 #error
 mseI = torch.sum( (exact_interior - uI.forward(x_grid))**2 ) / len(x_grid)
@@ -1920,7 +1987,6 @@ ax2.set_xticks([])
 
 plt.show()
 
-
 #%%
 
 ######################################################
@@ -1950,6 +2016,7 @@ plt.plot( lossesD[:horizon] , color='m' , label='Discrete Lagrange' )
 plt.plot( lossesE[:horizon] , color='c' , label='Shape Function Lagrange' )
 plt.plot( lossesF[:horizon] , color='g' , label='Nitsche Method' )
 plt.plot( lossesG[:horizon] , color='y' , label='Augmented Lagrangian' )
+plt.plot( lossesH[:horizon] , color='purple' , label='Neural Network Lagrange' )
 plt.plot( energy*np.ones(horizon) , '--' , label='Exact energy' )
 plt.legend()
 plt.xlabel('Epoch')
@@ -1958,32 +2025,38 @@ plt.title('Training Convergence')
 plt.show()
 
 
+#comparison of methods
 sz = 150
-
 plt.figure()
-plt.scatter( epochsA , mseA , s=sz , label='Hard enforcement' )
-plt.scatter( epochsB , mseB , s=sz , label='Penalty' )
-plt.scatter( epochsC , mseC , s=sz , label='SA PINN' )
-plt.scatter( epochsD , mseD , s=sz , label='Discrete Lagrange' )
-plt.scatter( epochsE , mseE , s=sz , label='Shape Function Lagrange' )
-plt.scatter( epochsF , mseF , s=sz , label='Nitsche Method' )
-plt.scatter( len(lossesG) , mseG ,  s=sz , label='Augmented Lagrangian' )
+plt.scatter( tA , mseA , s=sz , label='Hard enforcement' )
+plt.scatter( tB , mseB , s=sz , label='Penalty' )
+plt.scatter( tC , mseC , s=sz , label='SA PINN' )
+plt.scatter( tD , mseD , s=sz , label='Discrete Lagrange' )
+plt.scatter( tE , mseE , s=sz , label='Shape Function Lagrange' )
+plt.scatter( tF , mseF , s=sz , label='Nitsche Method' )
+plt.scatter( tG , mseG ,  s=sz , label='Augmented Lagrangian' )
+plt.scatter( tH , mseH , s=sz , label='Neural Network Lagrange' )
+plt.scatter( tI , mseI , s=sz , label='Constrained Optimization' )
+plt.yscale('log')
 plt.legend()
-plt.xlabel('Number of epochs')
+plt.xlabel('Run Time (s)')
 plt.ylabel('MSE')
 plt.title('Comparison of Solution Errors')
 plt.show()
 
 plt.figure()
-plt.scatter( epochsA , b_errorA , s=sz , label='Hard enforcement' )
-plt.scatter( epochsB , b_errorB , s=sz , label='Penalty' )
-plt.scatter( epochsC , b_errorC , s=sz , label='SA PINN' )
-plt.scatter( epochsD , b_errorD , s=sz , label='Discrete Lagrange' )
-plt.scatter( epochsE , b_errorE , s=sz , label='Shape Function Lagrange' )
-plt.scatter( epochsF , b_errorF , s=sz , label='Nitsche Method' )
-plt.scatter( len(lossesG) , b_errorG , s=sz , label='Augmented Lagrangian' )
+plt.scatter( tA , b_errorA , s=sz , label='Hard enforcement' )
+plt.scatter( tB , b_errorB , s=sz , label='Penalty' )
+plt.scatter( tC , b_errorC , s=sz , label='SA PINN' )
+plt.scatter( tD , b_errorD , s=sz , label='Discrete Lagrange' )
+plt.scatter( tE , b_errorE , s=sz , label='Shape Function Lagrange' )
+plt.scatter( tF , b_errorF , s=sz , label='Nitsche Method' )
+plt.scatter( tG , b_errorG , s=sz , label='Augmented Lagrangian' )
+plt.scatter( tH , b_errorH , s=sz , label='Neural Network Lagrange' )
+plt.scatter( tI , b_errorI , s=sz , label='Constrained Optimization' )
+plt.yscale('log')
 plt.legend()
-plt.xlabel('Number of epochs')
+plt.xlabel('Run Time (s)')
 plt.ylabel('Dirichlet Boundary MSE')
 plt.title('Comparison of Boundary Condition Errors')
 plt.show()

@@ -60,7 +60,7 @@ $$ u(x_1,x_2) = x_2 \mathcal{N}(x_1,x_2;\theta) $$
 
 $$ \Pi = \int \frac{1}{2} \frac{\partial u}{\partial x_i} \frac{\partial u}{\partial x_i} -f u d\Omega + \int p(s) u(s)^2 ds $$
 
-$$ \theta^*, p^* = \underset{\theta}{max} \underset{}{min}
+$$ \theta^*, p^* = \underset{\theta}{max} \underset{}{min} $$
 
 ## Nitsche's Method
 

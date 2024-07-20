@@ -95,3 +95,13 @@ A standard constrained optimization method can be used such as Sequential Quadra
 ## Using the Code
 
 Separate neural networks are introduced for each of the different methods. The Lagrange multiplier approach is implemented in three different ways: Lagrange multipliers stored at each integration point, the Lagrange multiplier discretized as a linear combination of shape functions, and the Lagrange multiplier discretized as a neural network. The code is separated into blocks that can be run separately after the neural networks are initialized, integration grids constructed, and some basic computations are performed (these can be run as blocks as well). Each method is split into its own block, and then a summary comparing all the methods is implemented at the end of the code.
+
+## Note on Newton-type Optimization
+Newton methods for constrained optimization do not do gradient descent, but instead solve the linear or nonlinear system expressing the condition for a stationary point of the objective. This means that they cannot distinguish between minima, maxima, and saddles given that all of these points have zero gradient. The MATLAB file "DRM_convexity.m" shows that Newton methods will sometimes find stationary points that are not minima for nonlinear discretizations such as those of a neural network. Thus, caution needs to be used when using optimization methods of this sort with the Deep Ritz Method. The eigenvalues of the Hessian matrix can be used to characterize whether the computed stationary point of the energy is a minimum, maximum or saddle. When the eigenvalues are all positive, the point is a minimum, when they are all negative, it is a maximum, and a mix of positive and negative values is a saddle point. A simple example is investigated in this file. We take the 1D elliptic energy functional with constant forcing
+
+$$ \Pi = \int\frac{1}{2}\Big( \frac{\partial u}{\partial x} \Big)^2 - u dx  $$
+
+and discretize the solution as a nonlinear function of degrees of freedom $a_1,\dots,a_N$. We use homogeneous Dirichlet boundaries on either side of the domain which are automatically satisfied by the discretization. The Hessian matrix can be shown to be
+
+
+$$ H_{ij} = \int \frac{\partial^2 u}{\partial x \partial a_i} \frac{\partial^2 u}{\partial a_j} - \Big( \frac{\partial^2 u}{\partial x^2} + 1 \Big) \frac{\partial^2 u}{\partial a_i \partail a_j} dx $$
